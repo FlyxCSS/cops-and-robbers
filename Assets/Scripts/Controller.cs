@@ -385,8 +385,16 @@ public class Controller : MonoBehaviour
     public void IncreaseRoundCount()
     {
         roundCount++;
-        rounds.text = "Rounds: " + roundCount;
-    }
+
+        if (roundCount >= 11)
+        {
+            rounds.text = "Rounds: FINALIZADAS";
+        }
+        else
+        {
+            rounds.text = "Rounds: " + roundCount;
+        }
+        }
 
     public void FindSelectableTiles(bool cop)
     {
