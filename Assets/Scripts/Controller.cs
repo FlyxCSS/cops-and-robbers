@@ -177,7 +177,8 @@ public class Controller : MonoBehaviour
         }
 
     }
-
+    //MOVIMIENTO DE FORMA ALEATORIA
+    /*
     public void RobberTurn()
     {
         clickedTile = robber.GetComponent<RobberMove>().currentTile;
@@ -210,6 +211,143 @@ public class Controller : MonoBehaviour
             // Caso raro: si no hubiera casillas disponibles, se queda donde está
             robber.GetComponent<RobberMove>().MoveToTile(tiles[robber.GetComponent<RobberMove>().currentTile]);
         }
+    }
+    */
+    public void RobberTurn()
+    {
+        // Guardamos la casilla actual del ladrón
+        clickedTile = robber.GetComponent<RobberMove>().currentTile;
+
+        // Marcamos la casilla actual como casilla actual
+        tiles[clickedTile].current = true;
+
+        // Calculamos con BFS las casillas a las que puede llegar el ladrón
+        // false significa que no estamos calculando movimiento de policía, sino del ladrón
+        FindSelectableTiles(false);
+
+        // Creamos una lista donde guardaremos las casillas alcanzables por el ladrón
+        List<Tile> selectableTiles = new List<Tile>();
+
+        // Guardamos la posición actual de cada policía
+        int cop0Tile = cops[0].GetComponent<CopMove>().currentTile;
+        int cop1Tile = cops[1].GetComponent<CopMove>().currentTile;
+
+        // Recorremos todas las casillas del tablero
+        for (int i = 0; i < Constants.NumTiles; i++)
+        {
+            // Solo añadimos las casillas seleccionables
+            // Además evitamos que el ladrón elija una casilla ocupada por un policía
+            if (tiles[i].selectable && i != cop0Tile && i != cop1Tile)
+            {
+                selectableTiles.Add(tiles[i]);
+            }
+        }
+
+        // Si hay al menos una casilla válida
+        if (selectableTiles.Count > 0)
+        {
+            // Empezamos suponiendo que la mejor casilla es la primera de la lista
+            Tile bestTile = selectableTiles[0];
+
+            // Guardamos la mejor distancia encontrada
+            // Empieza en -1 porque cualquier distancia real será mayor
+            int bestDistance = -1;
+
+            // Recorremos todas las casillas candidatas
+            foreach (Tile candidate in selectableTiles)
+            {
+                // Calculamos la distancia desde la casilla candidata hasta el policía 0
+                int distanceToCop0 = GetDistanceBetweenTiles(candidate.numTile, cop0Tile);
+
+                // Calculamos la distancia desde la casilla candidata hasta el policía 1
+                int distanceToCop1 = GetDistanceBetweenTiles(candidate.numTile, cop1Tile);
+
+                // Nos quedamos con la distancia al policía más cercano
+                // Esto representa el peligro real para el ladrón
+                int minDistanceToCops = Mathf.Min(distanceToCop0, distanceToCop1);
+
+                // Si esta casilla está más lejos del policía más cercano,
+                // pasa a ser la mejor opción
+                if (minDistanceToCops > bestDistance)
+                {
+                    bestDistance = minDistanceToCops;
+                    bestTile = candidate;
+                }
+            }
+
+            // Movemos el ladrón a la mejor casilla encontrada
+            robber.GetComponent<RobberMove>().MoveToTile(bestTile);
+
+            // Actualizamos la casilla actual del ladrón
+            robber.GetComponent<RobberMove>().currentTile = bestTile.numTile;
+        }
+        else
+        {
+            // Si no hubiera ninguna casilla válida, el ladrón se queda donde está
+            robber.GetComponent<RobberMove>().MoveToTile(tiles[robber.GetComponent<RobberMove>().currentTile]);
+        }
+    }
+    private int GetDistanceBetweenTiles(int startTile, int targetTile)
+    {
+        // Cola para hacer BFS
+        Queue<int> queue = new Queue<int>();
+
+        // Array para saber qué casillas ya hemos visitado
+        bool[] visited = new bool[Constants.NumTiles];
+
+        // Array para guardar la distancia desde startTile hasta cada casilla
+        int[] distance = new int[Constants.NumTiles];
+
+        // Inicializamos todas las distancias a -1
+        // -1 significa que todavía no hemos llegado a esa casilla
+        for (int i = 0; i < Constants.NumTiles; i++)
+        {
+            visited[i] = false;
+            distance[i] = -1;
+        }
+
+        // Marcamos la casilla inicial como visitada
+        visited[startTile] = true;
+
+        // La distancia de una casilla a sí misma es 0
+        distance[startTile] = 0;
+
+        // Añadimos la casilla inicial a la cola
+        queue.Enqueue(startTile);
+
+        // Mientras queden casillas por explorar
+        while (queue.Count > 0)
+        {
+            // Sacamos la primera casilla de la cola
+            int current = queue.Dequeue();
+
+            // Si hemos llegado al objetivo, devolvemos su distancia
+            if (current == targetTile)
+            {
+                return distance[current];
+            }
+
+            // Recorremos todos los vecinos de la casilla actual
+            foreach (int adjacent in tiles[current].adjacency)
+            {
+                // Si el vecino no ha sido visitado todavía
+                if (!visited[adjacent])
+                {
+                    // Lo marcamos como visitado
+                    visited[adjacent] = true;
+
+                    // Su distancia es la distancia del actual + 1
+                    distance[adjacent] = distance[current] + 1;
+
+                    // Lo añadimos a la cola para seguir explorando desde él
+                    queue.Enqueue(adjacent);
+                }
+            }
+        }
+
+        // Si por algún motivo no se encuentra camino, devolvemos un número grande
+        // En este tablero normalmente siempre debería haber camino
+        return 999;
     }
 
     public void EndGame(bool end)
