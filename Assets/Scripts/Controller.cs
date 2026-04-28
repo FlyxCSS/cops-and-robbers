@@ -232,36 +232,80 @@ public class Controller : MonoBehaviour
 
     public void FindSelectableTiles(bool cop)
     {
-                 
-        int indexcurrentTile;        
+        int indexcurrentTile;
 
-        if (cop==true)
+        if (cop == true)
             indexcurrentTile = cops[clickedCop].GetComponent<CopMove>().currentTile;
         else
             indexcurrentTile = robber.GetComponent<RobberMove>().currentTile;
 
-        //La ponemos rosa porque acabamos de hacer un reset
+        // La ponemos rosa porque acabamos de hacer un reset
         tiles[indexcurrentTile].current = true;
 
-        //Cola para el BFS
+        // Cola para el BFS
         Queue<Tile> nodes = new Queue<Tile>();
 
-        //TODO: Implementar BFS. Los nodos seleccionables los ponemos como selectable=true
-        //Tendrás que cambiar este código por el BFS
-        for(int i = 0; i < Constants.NumTiles; i++)
+        // Inicializamos el nodo inicial
+        Tile startTile = tiles[indexcurrentTile];
+        startTile.visited = true;
+        startTile.distance = 0;
+        startTile.parent = null;
+
+        nodes.Enqueue(startTile);
+
+        // Si estamos moviendo un policía, necesitamos saber dónde está el otro policía
+        int otherCopTile = -1;
+
+        if (cop == true)
         {
-            tiles[i].selectable = true;
+            int otherCop = 1 - clickedCop;
+            otherCopTile = cops[otherCop].GetComponent<CopMove>().currentTile;
         }
 
+        // BFS limitado a distancia 2
+        while (nodes.Count > 0)
+        {
+            Tile current = nodes.Dequeue();
 
+            // Solo expandimos si estamos a menos de 2 movimientos
+            if (current.distance < Constants.Distance)
+            {
+                foreach (int adjacentIndex in current.adjacency)
+                {
+                    Tile adjacentTile = tiles[adjacentIndex];
+
+                    // Si es un policía, no puede atravesar la casilla del otro policía
+                    if (cop == true && adjacentIndex == otherCopTile)
+                    {
+                        continue;
+                    }
+
+                    // Si no lo hemos visitado todavía
+                    if (!adjacentTile.visited)
+                    {
+                        adjacentTile.visited = true;
+                        adjacentTile.distance = current.distance + 1;
+                        adjacentTile.parent = current;
+
+                        nodes.Enqueue(adjacentTile);
+
+                        // La casilla inicial no debe ser seleccionable
+                        if (adjacentIndex != indexcurrentTile)
+                        {
+                            adjacentTile.selectable = true;
+                        }
+                    }
+                }
+            }
+        }
     }
-    
-   
-    
 
-    
 
-   
 
-       
+
+
+
+
+
+
 }
